@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Garage Empire · Owner</title>
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div id="login" class="login hidden">
+  <form id="loginForm" class="card login-card" autocomplete="on">
+    <div class="logo">GARAGE EMPIRE</div>
+    <div class="sub" data-t="ownerOnly"></div>
+    <label><span data-t="username"></span><input id="u" name="username" autocomplete="username" required></label>
+    <label><span data-t="password"></span><input id="p" name="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn primary" type="submit" data-t="signin"></button>
+    <div id="loginErr" class="err"></div>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="brand"><span class="logo sm">GARAGE EMPIRE</span><span class="pill" data-t="owner"></span></div>
+    <div class="top-r">
+      <button class="btn ghost" id="lang">EN</button>
+      <button class="btn ghost" id="logout" data-t="logout"></button>
+    </div>
+  </header>
+  <nav class="tabs" id="tabs">
+    <button data-tab="overview" class="on" data-t="tabOverview"></button>
+    <button data-tab="players" data-t="tabPlayers"></button>
+    <button data-tab="game" data-t="tabGame"></button>
+    <button data-tab="audit" data-t="tabAudit"></button>
+  </nav>
+  <main>
+    <section id="overview" class="pane"></section>
+    <section id="players" class="pane hidden"></section>
+    <section id="game" class="pane hidden"></section>
+    <section id="audit" class="pane hidden"></section>
+  </main>
+</div>
+
+<div id="drawer" class="drawer hidden" role="dialog" aria-modal="true"><div class="drawer-bg" id="drawerBg"></div><div class="drawer-box" id="drawerBox"></div></div>
+<div id="toast" class="toast"></div>
+<script src="admin.js"></script>
+</body>
+</html>
