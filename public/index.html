@@ -189,7 +189,7 @@ const t=k=>L[S.lang][k];
 const fmt=u=>S.cur==='USD'?'$'+Math.round(u).toLocaleString('en-US'):Math.round(u*MK.rate()).toLocaleString('en-US')+' '+MK.cl()[S.lang==='ar'?1:0];
 const cond=o=>Math.round((o.w[0]+o.w[1]+o.w[2])/3);
 const hpOf=o=>Math.round(CARS[o.cid][3]*(1+.08*o.st)*(1+.12*o.up.tu)*(.6+.4*cond(o)/100));
-const val=o=>Math.round(CARS[o.cid][5]*(.45+.45*cond(o)/100)*(1+.08*o.st+.1*o.up.tu+.02*o.up.ti+.03*o.up.wt))+(o.sp?200:0);
+const val=o=>Math.round(CARS[o.cid][5]*(.45+.45*cond(o)/100)*(1+.08*o.st+.1*o.up.tu+.02*o.up.ti+.03*o.up.wt))+(o.sp?35:0);
 const cur=()=>S.own.find(o=>o.id===S.sel);
 const tag=r=>`<span class="tag" style="background:${RAR[r][2]}">${S.lang==='ar'?RAR[r][1]:RAR[r][0]}</span>`;
 const bar=v=>`<div class="meter"><i style="width:${v}%;background:${v>60?'var(--good)':v>30?'var(--acc)':'var(--bad)'}"></i></div>`;
@@ -213,8 +213,8 @@ function vGarage(){
  <div class="row"><b>${c[0]} <span class="mut">${c[1]}</span></b>${tag(c[2])}</div>${infoButton(o.cid)}
  <div class="mut">${t('hp')}: ${hpOf(o)} · ${word('Mass','الوزن')}: ${c[4]} ${t('kg')} · ${t('cond')}: ${cond(o)}% · ${t('ecu')} ${o.st} · ${t('turbo')} ${o.up.tu} · ${t('tiresUp')} ${o.up.ti} · ${t('weightUp')} ${o.up.wt}</div>
  <div class="row" style="margin-top:6px" onclick="event.stopPropagation()">${typeof modelForCar==='function'&&modelForCar(o.cid)?`<span class="mut">${word('Authentic paint, fixed on this real-shape model.','اللون أصلي وثابت على مجسم الموديل الحقيقي ده.')}</span>`:`<span class="row" style="gap:5px">${COLS.map(k=>`<button class="sw" aria-label="color" style="background:${k}" onclick="paint(${o.id},'${k}')"></button>`).join('')}</span>`}
- <span class="row" style="gap:6px"><button onclick="spoil(${o.id})">${t('spoiler')} ${o.sp?'✓':fmt(500)}</button>
- <button onclick="tune(${o.id})" ${o.st>=3?'disabled':''}>${o.st>=3?t('max'):t('tune')+' '+fmt(800*(o.st+1))}</button>
+ <span class="row" style="gap:6px"><button onclick="spoil(${o.id})">${t('spoiler')} ${o.sp?'✓':fmt(SPOILER_COST)}</button>
+ <button onclick="tune(${o.id})" ${o.st>=3?'disabled':''}>${o.st>=3?t('max'):t('tune')+' '+fmt(ECU_STEP*(o.st+1))}</button>
  <button onclick="sell(${o.id})">${t('sell')} ${fmt(val(o))}</button></span></div></div>`}).join('')}
 function vMarket(){return`<button onclick="S.stock=stock();render()" style="margin-bottom:10px">${t('refresh')}</button>`+S.stock.map((s,i)=>{const c=CARS[s.cid];return`<div class="card"><div class="row"><b>${c[0]} <span class="mut">${c[1]}</span></b>${tag(c[2])}</div>${infoButton(s.cid)}
  <div class="row"><span class="mut">${t('hp')}: ${c[3]} · ${word('Mass','الوزن')}: ${c[4]} ${t('kg')} · ${t('cond')}: ${s.cond}%</span><button class="pri" onclick="buy(${i})">${t('buy')} ${fmt(s.price)}</button></div></div>`}).join('')}
@@ -239,8 +239,8 @@ function vRace(){const o=cur();if(!o)return`<div class="card">${t('pick')}</div>
  <div class="rpmWrap" id="rpmWrap" hidden><div class="rpmTop"><span>${t('rpm')}</span><span id="gearNum" dir="ltr"></span></div><div class="rpm"><span class="zone" style="left:${z[0]}%;width:${z[1]-z[0]}%"></span><span class="red"></span><i id="rpmFill"></i></div><div class="shiftLog" id="shiftLog"></div></div>
  ${rc?`<button class="pri" id="go" onclick="racing?(launched?shift():launch()):race()">${racing?(launched?t('shift'):(greenAt?t('tapGo'):t('wait'))):t('go')}</button>`:`<button class="pri" onclick="scout()">${t('scout')}</button>`}
  <div class="res" id="res"></div></div>`}
-const TU_COST=[3500,6000,9500],TI_COST=[800,1500],WT_COST=[1800,3000];
-function kitCost(o,i){const c=CARS[o.cid];return Math.round([150+c[5]*.012,120+c[5]*.004,100+c[5]*.003][i]*(has('mechanic')?.75:1))}
+const TU_COST=[1600,2800,4500],TI_COST=[400,1000],WT_COST=[100,800],SPOILER_COST=70,ECU_STEP=200;
+function kitCost(o,i){const c=CARS[o.cid];return Math.round([60+c[5]*.006,150+c[5]*.004,80+c[5]*.0025][i]*(has('mechanic')?.75:1))}
 function buyKit(i){const o=cur();if(!o||o.w[i]>=100)return;const c=kitCost(o,i);if(S.usd<c)return toast(t('poor'));S.usd-=c;o.w[i]=100;render()}
 function buyUp(k){const o=cur();if(!o)return;const costs={tu:TU_COST,ti:TI_COST,wt:WT_COST}[k],cst=costs[o.up[k]];if(cst===undefined)return;if(S.usd<cst)return toast(t('poor'));S.usd-=cst;o.up[k]++;S.sel=o.id;render()}
 function vParts(){const o=cur();if(!o)return`<div class="card">${t('pick')}</div>`;const c=CARS[o.cid];
@@ -251,15 +251,15 @@ function vParts(){const o=cur();if(!o)return`<div class="card">${t('pick')}</div
  kits.map((n,i)=>`<div class="row" style="margin:6px 0"><span>${n} <span class="mut">(${o.w[i]}%)</span></span><button onclick="buyKit(${i})" ${o.w[i]>=100?'disabled':''}>${o.w[i]>=100?t('ok'):t('install')+' '+fmt(kitCost(o,i))}</button></div>`).join('')+
  `<div class="eyebrow" style="margin:10px 0">${t('after')}</div>`+
  ups.map(([k,n,costs,mx])=>`<div class="row" style="margin:6px 0"><span>${n} <span class="mut">${t('stage')} ${o.up[k]}/${mx}</span></span><button onclick="buyUp('${k}')" ${o.up[k]>=mx?'disabled':''}>${o.up[k]>=mx?t('maxed'):t('install')+' '+fmt(costs[o.up[k]])}</button></div>`).join('')+
- `<div class="row" style="margin:6px 0"><span>${t('tune')} <span class="mut">${t('stage')} ${o.st}/3</span></span><button onclick="tune(${o.id})" ${o.st>=3?'disabled':''}>${o.st>=3?t('maxed'):t('install')+' '+fmt(800*(o.st+1))}</button></div>
- <div class="row" style="margin:6px 0"><span>${t('spoiler')}</span><button onclick="spoil(${o.id})">${o.sp?t('installed'):t('install')+' '+fmt(500)}</button></div></div>`}
+ `<div class="row" style="margin:6px 0"><span>${t('tune')} <span class="mut">${t('stage')} ${o.st}/3</span></span><button onclick="tune(${o.id})" ${o.st>=3?'disabled':''}>${o.st>=3?t('maxed'):t('install')+' '+fmt(ECU_STEP*(o.st+1))}</button></div>
+ <div class="row" style="margin:6px 0"><span>${t('spoiler')}</span><button onclick="spoil(${o.id})">${o.sp?t('installed'):t('install')+' '+fmt(SPOILER_COST)}</button></div></div>`}
 const TEAMDEF=[['analyst',1500,'analystN','analystD'],['mechanic',2500,'mechanicN','mechanicD'],['agent',2000,'agentN','agentD'],['coach',2000,'coachN','coachD']];
 function hire(m){const d=TEAMDEF.find(x=>x[0]===m);if(!d||has(m))return;if(S.usd<d[1])return toast(t('poor'));S.usd-=d[1];S.team.push(m);render()}
 function vTeam(){return`<div class="teamGrid">`+TEAMDEF.map(([id,cost,nk,dk])=>`<div class="card teamCard"><div class="row"><b>${t(nk)}</b>${has(id)?`<span class="tag" style="background:var(--good)">${t('hired')}</span>`:`<button class="pri" onclick="hire('${id}')">${t('hire')} ${fmt(cost)}</button>`}</div><div class="mut" style="margin-top:4px">${t(dk)}</div></div>`).join('')+`</div>`}
 
 function paint(id,k){const o=S.own.find(x=>x.id===id);o.col=k;S.sel=id;render()}
-function spoil(id){const o=S.own.find(x=>x.id===id);S.sel=id;if(o.sp){if(!confirm(word('Remove the spoiler? No refund.','تشيل السبويلر؟ مش هترجع فلوسه.')))return;o.sp=0}else{if(S.usd<500)return toast(t('poor'));S.usd-=500;o.sp=1}render()}
-function tune(id){const o=S.own.find(x=>x.id===id),p=800*(o.st+1);if(S.usd<p)return toast(t('poor'));S.usd-=p;o.st++;S.sel=id;render()}
+function spoil(id){const o=S.own.find(x=>x.id===id);S.sel=id;if(o.sp){if(!confirm(word('Remove the spoiler? No refund.','تشيل السبويلر؟ مش هترجع فلوسه.')))return;o.sp=0}else{if(S.usd<SPOILER_COST)return toast(t('poor'));S.usd-=SPOILER_COST;o.sp=1}render()}
+function tune(id){const o=S.own.find(x=>x.id===id),p=ECU_STEP*(o.st+1);if(S.usd<p)return toast(t('poor'));S.usd-=p;o.st++;S.sel=id;render()}
 function sell(id){const o=S.own.find(x=>x.id===id);S.usd+=Math.round(val(o));S.own=S.own.filter(x=>x.id!==id);if(S.sel===id)S.sel=S.own[0]?S.own[0].id:0;toast(t('sold'));render()}
 function buy(i){const s=S.stock[i];if(S.own.length>=8)return toast(t('full'));if(S.usd<s.price)return toast(t('poor'));
  S.usd-=s.price;const w=()=>Math.max(10,Math.min(100,s.cond+Math.round(rnd(-12,12))));
