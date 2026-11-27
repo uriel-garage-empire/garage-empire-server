@@ -155,16 +155,30 @@
     const gFail = () => { const g = el.querySelector('#geG'); if (!g || g.dataset.f) return; g.dataset.f = '1'; g.style.flexDirection = 'column'; g.style.alignItems = 'center'; g.style.gap = '6px';
       g.innerHTML = '<div class="hint" style="text-align:center">' + W('Google sign-in did not load on this device or network. Check your connection, turn off ad blockers, or sign in with email below.', 'زرار جوجل مظهرش على الجهاز أو الشبكة دي. اتأكد من النت أو اقفل مانع الإعلانات، أو ادخل بالإيميل تحت.') + '</div><button type="button" class="go" style="max-width:240px">' + W('Retry Google', 'جرّب جوجل تاني') + '</button>';
       g.querySelector('button').onclick = () => { g.dataset.f = ''; g.innerHTML = ''; gisReady = null; C.open(mode); }; };
-    if (cf.googleClientId) loadGis().then(() => {
-      google.accounts.id.initialize({ client_id: cf.googleClientId, ux_mode: 'popup', callback: async resp => {
-        err.textContent = ''; const r = await api('/api/auth/google', 'POST', { credential: resp.credential });
+    if (cf.googleClientId) {
+      const g = el.querySelector('#geG');
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'go'; btn.style.cssText = 'width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#1f1f1f;border:1px solid #dadce0';
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.9l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span>' + W('Continue with Google', 'كمّل بجوجل') + '</span>';
+      g.style.flexDirection = 'column'; g.style.alignItems = 'stretch'; g.style.gap = '6px'; g.append(btn);
+      const note = document.createElement('div'); note.className = 'hint'; note.style.textAlign = 'center'; g.append(note);
+      let tc = null;
+      const onToken = async resp => {
+        if (!resp || !resp.access_token) { note.textContent = W('Google sign-in was cancelled or blocked. Allow popups for this site and try again, or use email below.', 'دخول جوجل اتلغى أو اتحجب. اسمح بالنوافذ المنبثقة للموقع وجرّب تاني، أو ادخل بالإيميل تحت.'); return; }
+        err.textContent = ''; const r = await api('/api/auth/google', 'POST', { access_token: resp.access_token });
         if (r.s === 200 && r.j.needUsername) return pickName(el, r.j);
         if (r.s === 200) return done(r.j, el);
         err.textContent = errText(r);
-      } });
-      const g = el.querySelector('#geG'); if (g) google.accounts.id.renderButton(g, { theme: 'filled_black', size: 'large', text: 'continue_with', shape: 'pill', width: 300, locale: ar() ? 'ar' : 'en' });
-      setTimeout(() => { const g2 = el.querySelector('#geG'); if (g2 && !g2.querySelector('iframe,div[role=button]')) gFail(); }, 4000);
-    }).catch(gFail);
+      };
+      btn.onclick = async () => {
+        note.textContent = '';
+        try {
+          await loadGis();
+          if (!tc) tc = google.accounts.oauth2.initTokenClient({ client_id: cf.googleClientId, scope: 'openid email profile', callback: onToken, error_callback: () => onToken(null) });
+          tc.requestAccessToken({ prompt: 'select_account' });
+        } catch (e) { note.textContent = W('Google could not load on this device or network. Check your connection or use email below.', 'جوجل مقدرش يتحمل على الجهاز أو الشبكة دي. اتأكد من النت أو ادخل بالإيميل تحت.'); }
+      };
+      loadGis().catch(() => {});
+    }
     uIn.focus();
   };
   function pickName(el, info) {
