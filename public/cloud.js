@@ -1,5 +1,5 @@
 /* Garage Empire cloud accounts layer. Adds login, cloud save and owner-edit sync on top of the game.
-   No game rules, prices or save format are changed here. Guests keep playing with the browser-only save. */
+   No game rules, prices or save format are changed here. An account is required to play: the sign-in screen cannot be dismissed. */
 (function () {
   'use strict';
   const ar = () => (typeof S !== 'undefined' && S.lang === 'ar');
@@ -37,7 +37,7 @@
   }
   async function pull(first) {
     const r = await api('/api/save');
-    if (r.s === 401) { C.user = null; return setState('expired'); }
+    if (r.s === 401) { C.user = null; setState('expired'); return C.open('login'); }
     if (r.s === 403) return setState('banned', r.j.reason || '');
     if (r.s === 503) return setState('maint');
     if (r.s !== 200) return setState('offline');
@@ -70,7 +70,7 @@
         else if (confirm(W('This account was saved from another device.\nOK = load that progress, Cancel = keep this device\'s progress.', 'الحساب ده اتحفظ من جهاز تاني.\nموافق = حمّل التقدم ده، إلغاء = خلي تقدم الجهاز ده.'))) applyServer(r.j.data, r.j.rev, '');
         else { C.rev = r.j.rev; again = true; }
       }
-      else if (r.s === 401) { C.user = null; setState('expired'); }
+      else if (r.s === 401) { C.user = null; setState('expired'); C.open('login'); }
       else if (r.s === 403) setState('banned', r.j.reason || '');
       else if (r.s === 503) { setState('maint'); setTimeout(() => push(true), 30000); }
       else { setState('offline'); setTimeout(() => push(true), 10000); }
@@ -91,41 +91,85 @@
     return (C.user && !short ? C.user + ' · ' : '') + (m[C.state] || '');
   };
   C.chip = () => `<button onclick="Cloud.open()">${C.user ? '☁ ' + C.user : W('Sign in', 'تسجيل الدخول')}</button>`;
-  C.foot = () => C.user ? C.label() : W('Guest: progress is saved in this browser only. Sign in to save it to your account.', 'ضيف: التقدم محفوظ في المتصفح ده بس. سجّل دخول عشان يتحفظ في حسابك.');
-  C.settingsHTML = () => `<div class="grp"><small>${W('ACCOUNT', 'الحساب')}</small><p class="sv">${C.user ? C.label() : W('Not signed in. Progress stays in this browser.', 'مش مسجّل دخول. التقدم في المتصفح ده بس.')}</p>
+  C.foot = () => C.user ? C.label() : '';
+  C.settingsHTML = () => `<div class="grp"><small>${W('ACCOUNT', 'الحساب')}</small><p class="sv">${C.user ? C.label() : ''}</p>
     ${C.user ? `${C.role === 'owner' ? `<a class="act" href="/admin.html">${W('Owner dashboard', 'لوحة المالك')}</a>` : ''}<button class="act" onclick="Cloud.logout()">${W('Sign out', 'تسجيل خروج')}</button>` : `<button class="act" onclick="Cloud.open()">${W('Sign in or create account', 'دخول أو إنشاء حساب')}</button>`}</div>`;
 
   function css() {
     if (document.getElementById('geAuthCss')) return;
     const s = document.createElement('style'); s.id = 'geAuthCss';
-    s.textContent = '#geAuth{position:fixed;inset:0;z-index:9000;background:#000b;display:grid;place-items:center;padding:16px}#geAuth .bx{width:100%;max-width:380px;background:#0f1220;border:1px solid #2a3050;border-top:3px solid #ff5a1f;border-radius:14px;padding:18px;display:grid;gap:12px;color:#e8ecff}#geAuth h3{margin:0;font-size:20px}#geAuth label{display:grid;gap:5px;font-size:13px;color:#9aa3c7}#geAuth input{background:#0a0d1a;color:#e8ecff;border:1px solid #2a3050;border-radius:10px;padding:11px;font:inherit;min-height:44px}#geAuth .tabs{display:flex;gap:6px}#geAuth .tabs button,#geAuth .row button{flex:1;min-height:44px;border-radius:10px;border:1px solid #2a3050;background:#151a2e;color:#e8ecff;font:inherit;cursor:pointer}#geAuth .tabs .on{border-color:#ff5a1f;color:#ff8a54}#geAuth .go{background:linear-gradient(90deg,#ff5a1f,#ff2d95)!important;border:0!important;font-weight:700}#geAuth .err{color:#ff6b84;font-size:13px;min-height:18px}#geAuth .hint{font-size:12px;color:#9aa3c7}';
+    s.textContent = '#geAuth{position:fixed;inset:0;z-index:9000;background:#05070f;display:grid;overflow:auto;place-items:center;padding:16px}#geAuth .bx{width:100%;max-width:380px;background:#0f1220;border:1px solid #2a3050;border-top:3px solid #ff5a1f;border-radius:14px;padding:18px;display:grid;gap:12px;color:#e8ecff}#geAuth h3{margin:0;font-size:20px}#geAuth label{display:grid;gap:5px;font-size:13px;color:#9aa3c7}#geAuth input{background:#0a0d1a;color:#e8ecff;border:1px solid #2a3050;border-radius:10px;padding:11px;font:inherit;min-height:44px}#geAuth .tabs{display:flex;gap:6px}#geAuth .tabs button,#geAuth .row button{flex:1;min-height:44px;border-radius:10px;border:1px solid #2a3050;background:#151a2e;color:#e8ecff;font:inherit;cursor:pointer}#geAuth .tabs .on{border-color:#ff5a1f;color:#ff8a54}#geAuth .go{background:linear-gradient(90deg,#ff5a1f,#ff2d95)!important;border:0!important;font-weight:700}#geAuth .err{color:#ff6b84;font-size:13px;min-height:18px}#geAuth .hint{font-size:12px;color:#9aa3c7}';
     document.head.append(s);
   }
-  let mode = 'login';
-  C.open = function (m) {
+  let mode = 'login', gisReady = null, cfg = null;
+  const esc = t => String(t).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  async function loadCfg() { if (!cfg) { const r = await api('/api/status').catch(() => null); cfg = r && r.s === 200 ? r.j : {}; } return cfg; }
+  function loadGis() {
+    if (gisReady) return gisReady;
+    gisReady = new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = res; s.onerror = rej; document.head.append(s); });
+    return gisReady;
+  }
+  async function done(j, el) { C.user = j.username; C.role = j.role || 'player'; el.remove(); await pull(true); startPoll(); refreshUI(); if (window.Social) Social.start(); }
+  const errText = r => r.s === 503 ? (r.j.message || W('Maintenance right now.', 'صيانة دلوقتي.')) : r.s === 401 ? (r.j.error && /Google/.test(r.j.error) ? W('Google sign-in failed. Try again.', 'الدخول بجوجل فشل. جرّب تاني.') : W('Wrong username or password.', 'اسم المستخدم أو كلمة السر غلط.'))
+    : r.s === 409 ? (r.j.field === 'email' ? W('This email already has an account.', 'الإيميل ده عنده حساب بالفعل.') : W('Username taken. Pick another one.', 'اسم المستخدم ده مستخدم. اختار اسم تاني.'))
+    : r.s === 429 ? W('Too many attempts. Try later.', 'محاولات كتير. جرّب بعدين.') : r.s === 403 ? (r.j.banned ? W('This account is banned.', 'الحساب ده محظور.') : W('Registration is closed right now.', 'التسجيل مقفول دلوقتي.')) : (r.s === 400 ? W('Check the username (3-20 letters, digits or _), a valid email, and a password of 8+ characters.', 'راجع اسم المستخدم (٣-٢٠ حرف إنجليزي أو رقم أو _) والإيميل وكلمة السر (٨ حروف على الأقل).') : W('Something went wrong.', 'حصل خطأ.'));
+  C.open = async function (m) {
     if (C.user) return UI2.sheet('set');
-    css(); mode = m || mode;
+    css(); mode = m || mode; const cf = await loadCfg();
     let el = document.getElementById('geAuth'); if (el) el.remove();
     el = document.createElement('div'); el.id = 'geAuth'; el.dir = ar() ? 'rtl' : 'ltr';
-    el.innerHTML = `<form class="bx" autocomplete="on"><div class="tabs"><button type="button" data-m="login" class="${mode === 'login' ? 'on' : ''}">${W('Sign in', 'دخول')}</button><button type="button" data-m="register" class="${mode === 'register' ? 'on' : ''}">${W('Create account', 'حساب جديد')}</button></div>
-      <h3>${mode === 'login' ? W('Welcome back', 'أهلا بيك تاني') : W('Create your account', 'اعمل حسابك')}</h3>
-      <label>${W('Username (3-20 letters, digits or _)', 'اسم المستخدم (٣-٢٠ حرف إنجليزي أو رقم أو _)')}<input name="username" autocomplete="username" required maxlength="20" autocapitalize="none"></label>
-      <label>${W('Password (8+ characters)', 'كلمة السر (٨ حروف على الأقل)')}<input name="password" type="password" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" required minlength="${mode === 'login' ? 1 : 8}" maxlength="100"></label>
-      <div class="err" id="geErr"></div><div class="row" style="display:flex;gap:8px"><button type="button" id="geCancel">${W('Cancel', 'إلغاء')}</button><button class="go" type="submit">${mode === 'login' ? W('Sign in', 'دخول') : W('Create', 'إنشاء')}</button></div>
-      <div class="hint">${W('Your progress on this device can be moved to the account after you sign in.', 'تقدمك على الجهاز ده ممكن يتنقل للحساب بعد الدخول.')}</div></form>`;
+    const reg = mode === 'register';
+    el.innerHTML = `<form class="bx" autocomplete="on"><div class="tabs"><button type="button" data-m="login" class="${!reg ? 'on' : ''}">${W('Sign in', 'دخول')}</button><button type="button" data-m="register" class="${reg ? 'on' : ''}">${W('Create account', 'حساب جديد')}</button></div>
+      <h3>${reg ? W('Create your account', 'اعمل حسابك') : W('Welcome back', 'أهلا بيك تاني')}</h3>
+      <div class="hint">${W('You need an account to play Garage Empire.', 'لازم يكون عندك حساب عشان تلعب Garage Empire.')}</div>
+      ${cf.googleClientId ? `<div id="geG" style="display:flex;justify-content:center;min-height:44px"></div><div class="hint" style="text-align:center">${W('or', 'أو')}</div>` : ''}
+      ${reg ? `<label>${W('Email', 'الإيميل')}<input name="email" type="email" autocomplete="email" required maxlength="254" autocapitalize="none"></label>` : ''}
+      <label>${reg ? W('Username (3-20 letters, digits or _, must be unique)', 'اسم المستخدم (٣-٢٠ حرف إنجليزي أو رقم أو _، ومينفعش يتكرر)') : W('Username or email', 'اسم المستخدم أو الإيميل')}<input name="username" autocomplete="username" required maxlength="${reg ? 20 : 254}" autocapitalize="none"></label>
+      ${reg ? '<div class="hint" id="geU"></div>' : ''}
+      <label>${reg ? W('Password (8+ characters)', 'كلمة السر (٨ حروف على الأقل)') : W('Password', 'كلمة السر')}<input name="password" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" required minlength="${reg ? 8 : 1}" maxlength="100"></label>
+      <div class="err" id="geErr"></div><div class="row" style="display:flex;gap:8px"><button class="go" type="submit">${reg ? W('Create account', 'إنشاء الحساب') : W('Sign in', 'دخول')}</button></div><div class="hint" style="text-align:center"><a href="/privacy.html" target="_blank" style="color:#9aa3c7">${W('Privacy and terms', 'الخصوصية والشروط')}</a></div></form>`;
     document.body.append(el);
     el.querySelectorAll('.tabs button').forEach(b => b.onclick = () => C.open(b.dataset.m));
-    el.querySelector('#geCancel').onclick = () => el.remove();
-    el.onclick = e => { if (e.target === el) el.remove(); };
+    const err = el.querySelector('#geErr');
+    const uIn = el.querySelector('input[name=username]');
+    if (reg) {
+      let tm = 0; const uh = el.querySelector('#geU');
+      uIn.oninput = () => { clearTimeout(tm); uh.textContent = ''; const v = uIn.value.trim(); if (!/^[A-Za-z0-9_]{3,20}$/.test(v)) return;
+        tm = setTimeout(async () => { const r = await api('/api/username-available?u=' + encodeURIComponent(v)); if (uIn.value.trim() !== v || r.s !== 200) return; uh.style.color = r.j.available ? '#5ee08a' : '#ff6b84'; uh.textContent = r.j.available ? W('Username is available', 'الاسم متاح') : W('Username taken', 'الاسم مستخدم'); }, 350); };
+    }
     el.querySelector('form').onsubmit = async e => {
-      e.preventDefault(); const f = e.target, err = el.querySelector('#geErr'); err.textContent = '';
-      const r = await api('/api/' + (mode === 'login' ? 'login' : 'register'), 'POST', { username: f.username.value.trim(), password: f.password.value });
-      if (r.s === 200 || r.s === 201) { C.user = r.j.username; C.role = r.j.role || 'player'; el.remove(); await pull(true); startPoll(); refreshUI(); return; }
-      err.textContent = r.s === 503 ? (r.j.message || W('Maintenance right now.', 'صيانة دلوقتي.')) : r.s === 401 ? W('Wrong username or password.', 'اسم المستخدم أو كلمة السر غلط.') : r.s === 409 ? W('Username taken.', 'الاسم ده مستخدم.')
-        : r.s === 429 ? W('Too many attempts. Try later.', 'محاولات كتير. جرّب بعدين.') : r.s === 403 ? (r.j.banned ? W('This account is banned.', 'الحساب ده محظور.') : W('Registration is closed right now.', 'التسجيل مقفول دلوقتي.')) : (r.j.error || W('Something went wrong.', 'حصل خطأ.'));
+      e.preventDefault(); const f = e.target; err.textContent = '';
+      const body = { username: f.username.value.trim(), password: f.password.value };
+      if (reg) body.email = f.email.value.trim();
+      const r = await api('/api/' + (reg ? 'register' : 'login'), 'POST', body);
+      if (r.s === 200 || r.s === 201) return done(r.j, el);
+      err.textContent = errText(r);
     };
-    el.querySelector('input').focus();
+    if (cf.googleClientId) loadGis().then(() => {
+      google.accounts.id.initialize({ client_id: cf.googleClientId, ux_mode: 'popup', callback: async resp => {
+        err.textContent = ''; const r = await api('/api/auth/google', 'POST', { credential: resp.credential });
+        if (r.s === 200) return done(r.j, el);
+        if (r.s === 200 || !r.j.needUsername) { err.textContent = errText(r); return; }
+        pickName(el, r.j);
+      } });
+      const g = el.querySelector('#geG'); if (g) google.accounts.id.renderButton(g, { theme: 'filled_black', size: 'large', text: 'continue_with', shape: 'pill', width: 300, locale: ar() ? 'ar' : 'en' });
+    }).catch(() => { const g = el.querySelector('#geG'); if (g) g.textContent = W('Google sign-in could not load.', 'تعذر تحميل الدخول بجوجل.'); });
+    uIn.focus();
   };
+  function pickName(el, info) {
+    el.innerHTML = `<form class="bx"><h3>${W('Pick a username', 'اختار اسم مستخدم')}</h3><div class="hint">${esc(info.email)}</div>
+      <label>${W('Username (3-20 letters, digits or _, must be unique)', 'اسم المستخدم (٣-٢٠ حرف إنجليزي أو رقم أو _، ومينفعش يتكرر)')}<input name="username" required maxlength="20" autocapitalize="none" autocomplete="username"></label>
+      <div class="hint" id="geU"></div><div class="err" id="geErr"></div><div class="row" style="display:flex;gap:8px"><button class="go" type="submit">${W('Continue', 'كمّل')}</button></div></form>`;
+    const uIn = el.querySelector('input'), uh = el.querySelector('#geU'), err = el.querySelector('#geErr'); let tm = 0;
+    uIn.oninput = () => { clearTimeout(tm); uh.textContent = ''; const v = uIn.value.trim(); if (!/^[A-Za-z0-9_]{3,20}$/.test(v)) return;
+      tm = setTimeout(async () => { const r = await api('/api/username-available?u=' + encodeURIComponent(v)); if (uIn.value.trim() !== v || r.s !== 200) return; uh.style.color = r.j.available ? '#5ee08a' : '#ff6b84'; uh.textContent = r.j.available ? W('Username is available', 'الاسم متاح') : W('Username taken', 'الاسم مستخدم'); }, 350); };
+    el.querySelector('form').onsubmit = async e => { e.preventDefault(); err.textContent = '';
+      const r = await api('/api/auth/google/username', 'POST', { ticket: info.ticket, username: uIn.value.trim() });
+      if (r.s === 201 || r.s === 200) return done(r.j, el);
+      if (r.s === 401) { C.open('login'); return; }
+      err.textContent = errText(r); };
+    uIn.focus();
+  }
   C.logout = async function () {
     if (C.dirty || inflight) { await push(true); await new Promise(r => setTimeout(r, 400)); if (C.dirty && !confirm(W('Your last changes did not sync. Sign out anyway?', 'آخر تغييراتك ماتزامنتش. تسجّل خروج برضه؟'))) return; }
     await api('/api/logout', 'POST', {});
@@ -133,7 +177,7 @@
     C.user = null; C.role = null; C.state = 'guest'; C.rev = 0; clearTimeout(pollId);
     try { localStorage.removeItem(DEMO_KEY); } catch (e) {}
     applying = true; try { applyState(fresh()); S.lang = keep.lang; S.theme = keep.theme; S.scr = 'home'; render(); } finally { applying = false; }
-    UI2.close();
+    UI2.close(); if (window.Social) Social.stop(); C.open('login');
   };
   function startPoll() {
     clearTimeout(pollId);
@@ -141,7 +185,7 @@
       if (C.user && !document.hidden && !C.dirty && !inflight && !(typeof racing !== 'undefined' && racing)) {
         const r = await api('/api/save').catch(() => null);
         if (r && r.s === 200 && r.j.rev !== C.rev && !C.dirty) applyServer(r.j.data, r.j.rev, r.j.byAdmin ? W('The owner updated your account.', 'المالك عدّل في حسابك.') : '');
-        else if (r && (r.s === 401 || r.s === 403)) { C.user = null; setState(r.s === 403 ? 'banned' : 'expired'); }
+        else if (r && (r.s === 401 || r.s === 403)) { C.user = null; setState(r.s === 403 ? 'banned' : 'expired'); if (r.s === 401) C.open('login'); }
       }
       pollId = setTimeout(tick, 30000);
     };
@@ -153,9 +197,10 @@
   (async function init() {
     try {
       const r = await api('/api/me');
-      if (r.s === 200) { C.user = r.j.username; C.role = r.j.role; await pull(true); startPoll(); }
+      if (r.s === 200) { C.user = r.j.username; C.role = r.j.role; await pull(true); startPoll(); if (window.Social) Social.start(); }
       else if (r.s === 403 && r.j.banned) { setState('banned', r.j.reason || ''); }
     } catch (e) {}
     refreshUI();
+    if (!C.user) C.open('login');
   })();
 })();
