@@ -105,8 +105,15 @@
   const esc = t => String(t).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   async function loadCfg() { if (!cfg) { const r = await api('/api/status').catch(() => null); cfg = r && r.s === 200 ? r.j : {}; } return cfg; }
   function loadGis() {
+    if (window.google && google.accounts && google.accounts.id) return Promise.resolve();
     if (gisReady) return gisReady;
-    gisReady = new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = res; s.onerror = rej; document.head.append(s); });
+    gisReady = new Promise((res, rej) => {
+      const old = document.getElementById('geGis'); if (old) old.remove();
+      const s = document.createElement('script'); s.id = 'geGis'; s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+      const t = setTimeout(() => { gisReady = null; rej(new Error('timeout')); }, 8000);
+      s.onload = () => { clearTimeout(t); res(); }; s.onerror = () => { clearTimeout(t); gisReady = null; rej(new Error('blocked')); };
+      document.head.append(s);
+    });
     return gisReady;
   }
   async function done(j, el) { C.user = j.username; C.role = j.role || 'player'; el.remove(); await pull(true); startPoll(); refreshUI(); if (window.Social) Social.start(); }
@@ -145,6 +152,9 @@
       if (r.s === 200 || r.s === 201) return done(r.j, el);
       err.textContent = errText(r);
     };
+    const gFail = () => { const g = el.querySelector('#geG'); if (!g || g.dataset.f) return; g.dataset.f = '1'; g.style.flexDirection = 'column'; g.style.alignItems = 'center'; g.style.gap = '6px';
+      g.innerHTML = '<div class="hint" style="text-align:center">' + W('Google sign-in did not load on this device or network. Check your connection, turn off ad blockers, or sign in with email below.', 'زرار جوجل مظهرش على الجهاز أو الشبكة دي. اتأكد من النت أو اقفل مانع الإعلانات، أو ادخل بالإيميل تحت.') + '</div><button type="button" class="go" style="max-width:240px">' + W('Retry Google', 'جرّب جوجل تاني') + '</button>';
+      g.querySelector('button').onclick = () => { g.dataset.f = ''; g.innerHTML = ''; gisReady = null; C.open(mode); }; };
     if (cf.googleClientId) loadGis().then(() => {
       google.accounts.id.initialize({ client_id: cf.googleClientId, ux_mode: 'popup', callback: async resp => {
         err.textContent = ''; const r = await api('/api/auth/google', 'POST', { credential: resp.credential });
@@ -153,7 +163,8 @@
         err.textContent = errText(r);
       } });
       const g = el.querySelector('#geG'); if (g) google.accounts.id.renderButton(g, { theme: 'filled_black', size: 'large', text: 'continue_with', shape: 'pill', width: 300, locale: ar() ? 'ar' : 'en' });
-    }).catch(() => { const g = el.querySelector('#geG'); if (g) g.textContent = W('Google sign-in could not load.', 'تعذر تحميل الدخول بجوجل.'); });
+      setTimeout(() => { const g2 = el.querySelector('#geG'); if (g2 && !g2.querySelector('iframe,div[role=button]')) gFail(); }, 4000);
+    }).catch(gFail);
     uIn.focus();
   };
   function pickName(el, info) {
