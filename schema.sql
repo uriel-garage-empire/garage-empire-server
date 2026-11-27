@@ -32,3 +32,42 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE INDEX IF NOT EXISTS audit_log_ts ON audit_log (ts DESC);
 ALTER TABLE saves ADD COLUMN IF NOT EXISTS rev BIGINT NOT NULL DEFAULT 1;
 ALTER TABLE saves ADD COLUMN IF NOT EXISTS by_admin BOOLEAN NOT NULL DEFAULT false;
+-- v0.8.0 social: email, Google sign-in, friends, chat
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS muted_until TIMESTAMPTZ;
+ALTER TABLE users ALTER COLUMN pass_hash DROP NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower ON users (lower(email)) WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub ON users (google_sub) WHERE google_sub IS NOT NULL;
+CREATE TABLE IF NOT EXISTS friendships (
+  user_a BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_b BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  requester BIGINT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_a, user_b)
+);
+CREATE TABLE IF NOT EXISTS blocks (
+  blocker BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  blocked BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (blocker, blocked)
+);
+CREATE TABLE IF NOT EXISTS messages (
+  id BIGSERIAL PRIMARY KEY,
+  sender BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recipient BIGINT REFERENCES users(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  deleted BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS messages_global ON messages (id DESC) WHERE recipient IS NULL;
+CREATE INDEX IF NOT EXISTS messages_dm ON messages (recipient, id DESC);
+CREATE TABLE IF NOT EXISTS reports (
+  id BIGSERIAL PRIMARY KEY,
+  reporter BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  reason TEXT,
+  resolved BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (reporter, message_id)
+);
