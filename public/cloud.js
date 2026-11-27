@@ -148,9 +148,9 @@
     if (cf.googleClientId) loadGis().then(() => {
       google.accounts.id.initialize({ client_id: cf.googleClientId, ux_mode: 'popup', callback: async resp => {
         err.textContent = ''; const r = await api('/api/auth/google', 'POST', { credential: resp.credential });
+        if (r.s === 200 && r.j.needUsername) return pickName(el, r.j);
         if (r.s === 200) return done(r.j, el);
-        if (r.s === 200 || !r.j.needUsername) { err.textContent = errText(r); return; }
-        pickName(el, r.j);
+        err.textContent = errText(r);
       } });
       const g = el.querySelector('#geG'); if (g) google.accounts.id.renderButton(g, { theme: 'filled_black', size: 'large', text: 'continue_with', shape: 'pill', width: 300, locale: ar() ? 'ar' : 'en' });
     }).catch(() => { const g = el.querySelector('#geG'); if (g) g.textContent = W('Google sign-in could not load.', 'تعذر تحميل الدخول بجوجل.'); });
