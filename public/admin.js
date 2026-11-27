@@ -2,7 +2,7 @@
 const $ = s => document.querySelector(s);
 const T = {
 ar:{ownerOnly:'لوحة تحكم المالك فقط',username:'اسم المستخدم',password:'كلمة السر',signin:'دخول',owner:'المالك',logout:'خروج',
-tabOverview:'نظرة عامة',tabPlayers:'اللاعبين',tabGame:'التحكم في اللعبة',tabAudit:'السجل',
+tabOverview:'نظرة عامة',tabPlayers:'اللاعبين',tabGame:'التحكم في اللعبة',tabAudit:'السجل',tabChat:'الشات',chatReports:'البلاغات',chatRecent:'آخر رسايل الشات العام',del:'مسح',mute:'كتم ساعة',unmute:'فك الكتم',dismiss:'تجاهل',by:'من',rep:'بلّغ',
 players:'لاعب',newDay:'جدد (٢٤ ساعة)',newWeek:'جدد (٧ أيام)',active:'نشطين (٢٤ ساعة)',banned:'محظورين',cash:'إجمالي الفلوس',cars:'إجمالي العربيات',wins:'إجمالي الانتصارات',
 richest:'أغنى اللاعبين',popular:'أكتر عربيات مملوكة',none:'لا يوجد',search:'ابحث باسم اللاعب',sortCreated:'الأحدث',sortCash:'الأغنى',sortWins:'الأكتر فوزا',sortSeen:'آخر نشاط',sortName:'الاسم',
 prev:'السابق',next:'التالي',of:'من',noSave:'مفيش حفظ سحابي',bannedTag:'محظور',
@@ -17,7 +17,7 @@ reg:'التسجيل مفتوح',regD:'اقفله لو مش عايز حسابات
 econ:'تعديل الأسعار والمكافآت جاي لاحقا: الاقتصاد لسه بيتحسب جوه المتصفح.',
 audit:'آخر ٢٠٠ إجراء',bad:'اسم المستخدم أو كلمة السر غلط',notOwner:'الحساب ده مش مالك',err:'حصل خطأ'},
 en:{ownerOnly:'Owner-only control panel',username:'Username',password:'Password',signin:'Sign in',owner:'OWNER',logout:'Log out',
-tabOverview:'Overview',tabPlayers:'Players',tabGame:'Game control',tabAudit:'Audit log',
+tabOverview:'Overview',tabPlayers:'Players',tabGame:'Game control',tabAudit:'Audit log',tabChat:'Chat',chatReports:'Reports',chatRecent:'Recent global chat',del:'Delete',mute:'Mute 1h',unmute:'Unmute',dismiss:'Dismiss',by:'From',rep:'reported by',
 players:'Players',newDay:'New (24h)',newWeek:'New (7d)',active:'Active (24h)',banned:'Banned',cash:'Total cash',cars:'Total cars',wins:'Total wins',
 richest:'Richest players',popular:'Most owned cars',none:'None',search:'Search username',sortCreated:'Newest',sortCash:'Richest',sortWins:'Most wins',sortSeen:'Last active',sortName:'Name',
 prev:'Prev',next:'Next',of:'of',noSave:'No cloud save',bannedTag:'banned',
@@ -78,7 +78,7 @@ $('#tabs').addEventListener('click', e => { const b = e.target.closest('button')
 function renderTab(name) {
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('hidden', p.id !== name));
-  ({ overview: rOverview, players: rPlayers, game: rGame, audit: rAudit })[name]();
+  ({ overview: rOverview, players: rPlayers, game: rGame, chat: rChat, audit: rAudit })[name]();
 }
 
 async function rOverview() {
@@ -156,6 +156,18 @@ async function rGame() {
     block(t('ann'), t('annD'), aOn, aTx, aLv, h('button', { class: 'btn primary', onclick: sv(() => ({ announcement: { active: aOn.checked, text: aTx.value, level: aLv.value } })) }, t('save'))),
     block(t('reg'), t('regD'), rOp, h('button', { class: 'btn primary', onclick: sv(() => ({ registration: { open: rOp.checked } })) }, t('save'))),
     h('div', { class: 'note' }, t('econ')));
+  el.style.display = 'grid'; el.style.gap = '12px';
+}
+
+async function rChat() {
+  const d = await api('/social/chat'), el = $('#chat');
+  const act = (path, body, ok) => async () => { await api(path, 'POST', body); toast(ok || t('done')); rChat(); };
+  const line = (m, extra) => h('div', { class: 'row' }, h('span', { class: 'tm' }, when(m.ts)), h('b', {}, m.username || m.sender), h('span', {}, m.text), ...extra);
+  el.replaceChildren(
+    h('div', { class: 'card log' }, h('h2', {}, t('chatReports')), d.reports.length ? d.reports.map(r => h('div', {}, line(r, [h('span', { class: 'note' }, t('rep') + ' ' + r.reporter)]),
+      h('button', { class: 'btn ghost', onclick: act('/social/delete', { id: r.mid }) }, t('del')), h('button', { class: 'btn ghost', onclick: act('/social/mute', { userId: r.sid, minutes: 60 }) }, t('mute')), h('button', { class: 'btn ghost', onclick: act('/social/dismiss', { id: r.id }) }, t('dismiss')))) : h('div', { class: 'note' }, t('none'))),
+    h('div', { class: 'card log' }, h('h2', {}, t('chatRecent')), d.messages.length ? d.messages.filter(m => !m.deleted).map(m => h('div', {}, line(m, []),
+      h('button', { class: 'btn ghost', onclick: act('/social/delete', { id: m.id }) }, t('del')), h('button', { class: 'btn ghost', onclick: act('/social/mute', { userId: m.uid, minutes: 60 }) }, t('mute')), h('button', { class: 'btn ghost', onclick: act('/social/mute', { userId: m.uid, minutes: 0 }) }, t('unmute')))) : h('div', { class: 'note' }, t('none'))));
   el.style.display = 'grid'; el.style.gap = '12px';
 }
 
