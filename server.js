@@ -106,6 +106,17 @@ async function verifyGoogle(idToken) {
   const email = cleanEmail(claims.email); if (!email) return null;
   return { sub: String(claims.sub), email };
 }
+// Verifies a Google OAuth access token (from the popup token flow) with Google's tokeninfo. Returns { sub, email } or null.
+async function verifyGoogleAccess(token) {
+  if (!GOOGLE_CLIENT_ID || typeof token !== 'string' || token.length < 10 || token.length > 4000) return null;
+  const r = await fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(token), { signal: AbortSignal.timeout(8000) });
+  if (!r.ok) return null;
+  const c = await r.json();
+  if ((c.aud || c.azp) !== GOOGLE_CLIENT_ID || !c.sub || !c.email || String(c.email_verified) !== 'true') return null;
+  if (c.exp && Number(c.exp) * 1000 < Date.now()) return null;
+  const email = cleanEmail(c.email); if (!email) return null;
+  return { sub: String(c.sub), email };
+}
 app.get('/api/status', asyncRoute(async (_req, res) => {
   const st = await readSettings(pool);
   res.set('Cache-Control', 'no-store');
@@ -136,7 +147,7 @@ app.get('/api/username-available', rateLimit({ windowMs: 60 * 1000, limit: 60, s
 }));
 // Google sign-in. Existing Google account: signs in. New one: returns a short ticket and the player picks a unique username next.
 app.post('/api/auth/google', authLimit, asyncRoute(async (req, res) => {
-  const g = await verifyGoogle(req.body?.credential).catch(() => null);
+  const g = await (req.body?.access_token ? verifyGoogleAccess(req.body.access_token) : verifyGoogle(req.body?.credential)).catch(() => null);
   if (!g) return res.status(401).json({ error: 'Google sign-in failed. Try again.' });
   const { rows } = await pool.query('SELECT id,username,role,banned,ban_reason,token_ver FROM users WHERE google_sub=$1', [g.sub]);
   let user = rows[0];
