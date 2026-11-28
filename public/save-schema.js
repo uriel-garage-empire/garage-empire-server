@@ -1,6 +1,6 @@
 /* Shared allow-list for local and cloud saves. Economy is still client-authoritative. */
 (function (root) {
-  const CAR_COUNT = 100;
+  const CAR_COUNT = 107;
   const TEAM_IDS = ['analyst', 'mechanic', 'agent', 'coach'];
   const TABS = ['garage', 'market', 'catalog', 'work', 'race', 'parts', 'team'];
   function upg(u) {
