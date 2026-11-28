@@ -141,7 +141,7 @@ a.sourceLink{color:var(--neo);font-size:12px;text-decoration:none;overflow-wrap:
 <script src="original-718-boxster.js?v=original1"></script>
 <script src="./catalog-data.js?v=20261122-realshape22-final"></script>
 <script src="./preview.js?v=bidi1"></script>
-<script src="./save-schema.js?v=20261122-realshape22-final"></script>
+<script src="./save-schema.js?v=start1"></script>
 <script src="./markets-data.js?v=mk34"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="./GLTFLoader.js?v=20261122-realshape22-final"></script>
@@ -184,7 +184,7 @@ ar:{garage:'الجراج',market:'السوق',work:'الورشة',race:'السب
 let S, uid=1, car3d;
 const rnd=(a,b)=>a+Math.random()*(b-a);
 function stock(){return Array.from({length:6},()=>{const c=Math.min(CARS.length-1,Math.floor(Math.pow(Math.random(),1.7)*CARS.length)),cond=Math.round(rnd(35,100));return{cid:c,cond,price:Math.round(CARS[c][5]*(.5+.5*cond/100)*rnd(.95,1.2))}})}
-function fresh(){uid=1;return{usd:8000,own:[{id:uid++,cid:CARS.findIndex(c=>c[0]==='Hyundai Excel'),w:[70,60,75],col:COLS[1],sp:0,st:0,up:{tu:0,ti:0,wt:0}}],sel:1,stock:stock(),tab:'garage',lang:'ar',cur:'USD',wins:0,theme:'',team:[]}}
+function fresh(){uid=1;return{usd:0,own:[],started:false,sel:0,stock:stock(),tab:'garage',lang:'ar',cur:'USD',wins:0,theme:'',team:[]}}
 const t=k=>L[S.lang][k];
 const fmt=u=>S.cur==='USD'?'$'+Math.round(u).toLocaleString('en-US'):Math.round(u*MK.rate()).toLocaleString('en-US')+' '+MK.cl()[S.lang==='ar'?1:0];
 const cond=o=>Math.round((o.w[0]+o.w[1]+o.w[2])/3);
@@ -443,9 +443,9 @@ mo.observe(document.body,{childList:true,subtree:true,characterData:true});
 run();
 })();
 </script>
-<script src="./markets-ui.js?v=mk34"></script>
+<script src="./markets-ui.js?v=mk35"></script>
 <script src="./ui2.js?v=ui1"></script>
-<script src="./social.js?v=1"></script><script src="./cloud.js?v=3"></script>
+<script src="./social.js?v=1"></script><script src="./cloud.js?v=4"></script>
 <script src="./status.js"></script>
 </body>
 </html>
