@@ -30,6 +30,9 @@ app.set('trust proxy', IS_PROD ? 1 : false);
 app.disable('x-powered-by');
 app.use(express.json({ limit: '200kb', strict: true }));
 app.use((req, res, next) => { if (req.path.startsWith('/admin')) res.set('X-Robots-Tag', 'noindex, nofollow'); next(); });
+// Android app (Trusted Web Activity) digital asset links. Add the Play App Signing SHA-256 here after the first Play upload.
+const ASSET_LINKS = [{ relation: ['delegate_permission/common.handle_all_urls'], target: { namespace: 'android_app', package_name: 'com.garageempire.game', sha256_cert_fingerprints: ['D2:0C:8F:9C:28:08:3A:6B:EE:D2:31:FF:65:1A:41:0C:74:18:13:8A:8B:80:59:EB:31:D7:11:3C:9F:57:8E:1B'] } }];
+app.get('/.well-known/assetlinks.json', (_req, res) => { res.set('Cache-Control', 'public, max-age=300'); res.type('application/json').send(JSON.stringify(ASSET_LINKS)); });
 app.use(express.static(path.join(__dirname, 'public'), { etag: true, maxAge: IS_PROD ? '1h' : 0 }));
 
 // Minimal cookie parser; no additional dependency required.
