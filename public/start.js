@@ -14,5 +14,11 @@ function startOverlay(){const old=document.getElementById('geStart');if(S.starte
  Object.keys(MK.C).map(k=>`<button onclick="pickStart('${k}')" style="display:flex;width:100%;justify-content:space-between;align-items:center;margin-bottom:8px;padding:12px 14px;font-size:16px"><span>${FLAG[k]||''} ${nm(k)}</span><span class="mut">${START[k].toLocaleString('en-US')} ${MK.C[k].cl[ar()?1:0]}</span></button>`).join('')+`</div>`;
  document.body.appendChild(d)}
 const _r2=window.render;window.render=function(){const r=_r2.apply(this,arguments);startOverlay();return r};
+/* Starter cars: body labels and an honest spec card (their specs are approximate era values, not manufacturer-sourced). */
+if(typeof SHAPES!=='undefined'){SHAPES.classic=['Classic saloon','سيدان كلاسيك'];SHAPES.smallhatch=['Hatchback','هاتشباك']}
+if(typeof realSpecs==='function'){const _rs=realSpecs;window.realSpecs=function(cid){let h=_rs.apply(this,arguments);
+ if(CAR_ADDITIONS[cid-32]&&CAR_ADDITIONS[cid-32][11]===CAR_SOURCES.findIndex(x=>x.publisher==='Game estimate')){
+  h=h.replace(/<a class="sourceLink"[^>]*>.*?<\/a>/,'<p class="mut">'+W('Approximate era figures. No manufacturer source; a game estimate.','أرقام تقريبية من الفترة دي. مفيش مصدر من الشركة، تقدير للعبة.')+'</p>').replace(/FACTORY FILE \/ SOURCED|ملف المصنع \/ موثّق/,W('GAME ESTIMATE / NOT SOURCED','تقدير للعبة / من غير مصدر'))}
+ return h}}
 render();
 })();
