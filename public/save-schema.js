@@ -39,7 +39,7 @@
         team.push(m);
       }
     }
-    return {usd:d.usd,own,stock,wins:d.wins,team,
+    return {usd:d.usd,own,stock,started:d.started===undefined?true:d.started===true,wins:d.wins,team,
       sel:ids.has(d.sel)?d.sel:(own[0]?.id || 0),
       cur:['USD','EGP'].includes(d.cur)?d.cur:'USD',
       lang:['ar','en'].includes(d.lang)?d.lang:'ar',
