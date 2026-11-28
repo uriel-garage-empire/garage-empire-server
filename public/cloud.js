@@ -13,7 +13,7 @@
     let j = null; try { j = await r.json(); } catch (e) {}
     return { s: r.status, j: j || {} };
   };
-  const nonFresh = () => S.wins > 0 || S.own.length !== 1 || S.usd !== 8000 || (S.team && S.team.length > 0);
+  const nonFresh = () => S.started !== false && (S.wins > 0 || S.own.length > 0 || (S.team && S.team.length > 0) || S.usd !== (window.MK && MK.startUsd ? MK.startUsd(MK.M.country) : 0));
   const snap = () => GarageSave.normalize(S);
   function refreshUI() {
     try {
